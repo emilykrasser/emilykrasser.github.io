@@ -1,0 +1,81 @@
+// Emily Krasser
+// October 2018
+// Main controller for collision simulator.
+// Attatched to Main Camera
+ 
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.EventSystems;
+
+public class MainController_CollisionandProjection : MonoBehaviour {
+    public GameObject travelerPrefab;
+    GameObject traveler;
+
+    GameObject endPointRight, endPointLeft;
+    GameObject aimLine;
+
+    public LayerMask layerMask;
+
+    Vector3 aimLinePosition;
+    Vector3 aimLineRot;
+    Vector3 aimLineScale;
+
+    public float interval = 1;
+    public float speed = 6;
+    public float lifespan = 10;
+
+    float time = 1;
+
+    void Start ()
+    {
+        endPointRight = GameObject.Find("RightEndPoint");
+        endPointLeft = GameObject.Find("LeftEndPoint");
+        aimLine = GameObject.Find("AimLine");
+    }
+
+    void Update ()
+    {
+        time = time + Time.deltaTime;
+
+        if(time > interval + 1f)
+        {
+            traveler = Instantiate(travelerPrefab);
+            traveler.GetComponent<Traveler>().timeAlive = lifespan;
+            traveler.GetComponent<Traveler>().speed = speed;
+            time = 1;
+        }
+
+        if (Input.GetMouseButton(0) && !EventSystem.current.IsPointerOverGameObject())
+        {
+            // Using Raycast only to position the end points of the aimLine.
+            RaycastHit hit;
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+
+            if (Physics.Raycast(ray, out hit, 100, layerMask))
+            {
+                onClick(hit.collider.gameObject, hit.point);
+            }
+        }       
+    }
+
+    // Allows user to manipulate the endpoints of the aim line if right wall or left wall is clicked separately.
+    public void onClick(GameObject gameObj, Vector3 hitPoint)
+    {
+        if (gameObj.name == "RightWall")
+        {
+            endPointRight.transform.position = hitPoint;
+        }
+        else if(gameObj.name == "LeftWall")
+        {
+            endPointLeft.transform.position = hitPoint;
+        }
+
+        aimLineRot = (endPointRight.transform.position - endPointLeft.transform.position);
+        aimLinePosition = (endPointLeft.transform.position + (endPointRight.transform.position - endPointLeft.transform.position)/2);
+
+        aimLine.transform.up = aimLineRot;
+        aimLine.transform.position = aimLinePosition;
+        Debug.DrawLine(endPointLeft.transform.position, endPointRight.transform.position, Color.black);
+    }
+}
