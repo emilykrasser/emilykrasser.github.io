@@ -1,0 +1,116 @@
+// Emily Krasser
+// October 2018
+// Script attached to each Traveler in collision simulator.
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Traveler_CollisionandProjection : MonoBehaviour {
+
+    GameObject plane, planeSphere;
+
+    GameObject endPointLeft, endPointRight;
+
+    public float timeAlive, actualTimeAlive, speed;
+
+    Vector3 travelDir, reflectTravelDir, heading;
+    public float dot;
+
+    public GameObject shadowPrefab;
+    GameObject shadow;
+    public bool shadowOn, shadowInstantiated, dirChanged;
+
+    Vector3 planeN, planeCenter, travelerV;
+
+	void Start () {
+        plane = GameObject.Find("TheBarrier");
+        planeSphere = GameObject.Find("PlaneSphere");
+        endPointRight = GameObject.Find("RightEndPoint");
+        endPointLeft = GameObject.Find("LeftEndPoint");
+
+        // Instantiate object shadow and disable the mesh renderer until traveler can project shadow onto plane.
+        shadow = Instantiate(shadowPrefab, plane.transform.position, plane.transform.rotation);
+        shadow.GetComponent<MeshRenderer>().enabled = false;
+
+        transform.localPosition = endPointLeft.transform.position;
+
+        // Get the initial vectors of the traveller
+        travelDir = -(endPointLeft.transform.position - endPointRight.transform.position).normalized;
+        travelerV = shadow.transform.localPosition - transform.localPosition;
+        travelerV.Normalize();
+
+        shadowOn = false;
+        shadowInstantiated = false;
+        dirChanged = false;
+
+        // Destroy traveler and corresponding shadow after user set amount of time.
+        Destroy(gameObject, timeAlive);
+        Destroy(shadow, timeAlive);
+    }
+
+    void Update ()
+    {
+        // Get the barrier's normal and center.
+        planeN = -plane.transform.forward;
+        planeCenter = plane.transform.localPosition;
+
+        heading = transform.position - plane.transform.position;
+
+        dot = Vector3.Dot(heading, -plane.transform.forward);
+
+        float r = planeSphere.transform.localScale.x * 0.5f;
+
+        // Determine whether or not the traveler is in front of the barrier to project a shadow onto it.
+        if ((shadow.transform.localPosition - planeSphere.transform.position).magnitude < r && dot >= 0 && shadowInstantiated == true)
+        {
+            shadow.GetComponent<MeshRenderer>().enabled = true;
+            shadowOn = true;
+        }
+        else
+        {
+            shadow.GetComponent<MeshRenderer>().enabled = false;
+            shadowOn = false;
+        }
+
+        gameObject.transform.Translate(travelDir * Time.deltaTime * speed);
+
+        moveShadow();
+
+        // Determine whether the traveler has collied with the planeSphere and then calculate the reflected vector to travel.
+        if (plane.transform.localRotation.y < 180 && plane.transform.localRotation.y > 0 && collision() && dirChanged == false && shadowOn == true)
+        {
+            reflectTravelDir = -(2 * (Vector3.Dot(travellerV, planeN)) * planeN - travellerV);
+            travelDir = reflectTravelDir;
+            dirChanged = true;
+        }
+    }
+
+    // Called in update. Moves shadow along with the traveller and at the updated position and rotation of the barrier.
+    void moveShadow()
+    {
+        shadowInstantiated = true;
+
+        float d = Vector3.Dot(planeN, planeCenter);
+        float h = Vector3.Dot(gameObject.transform.localPosition, planeN) - d;
+
+        shadow.transform.localPosition = gameObject.transform.localPosition - (planeN * h);
+        shadow.transform.localRotation = plane.transform.localRotation;
+    }
+
+    // Detects collision.
+    bool collision()
+    {
+        Vector3 V = transform.localPosition - endPointLeft.transform.localPosition;
+        Vector3 Velocity = shadow.transform.localPosition - endPointLeft.transform.localPosition;
+        float D = Velocity.magnitude;
+        Velocity.Normalize();
+
+        if(V.magnitude > D)
+        {
+            return true;
+        }
+
+        return false;
+    }
+}
